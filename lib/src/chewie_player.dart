@@ -1,15 +1,15 @@
 import 'dart:async';
 
-import 'package:chewie/src/chewie_progress_colors.dart';
-import 'package:chewie/src/models/option_item.dart';
-import 'package:chewie/src/models/options_translation.dart';
-import 'package:chewie/src/models/subtitle_model.dart';
-import 'package:chewie/src/notifiers/player_notifier.dart';
-import 'package:chewie/src/player_with_controls.dart';
+import 'package:cached_chewie/src/chewie_progress_colors.dart';
+import 'package:cached_chewie/src/models/option_item.dart';
+import 'package:cached_chewie/src/models/options_translation.dart';
+import 'package:cached_chewie/src/models/subtitle_model.dart';
+import 'package:cached_chewie/src/notifiers/player_notifier.dart';
+import 'package:cached_chewie/src/player_with_controls.dart';
+import 'package:cached_video_player/cached_video_player.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import 'package:video_player/video_player.dart';
 import 'package:wakelock/wakelock.dart';
 
 typedef ChewieRoutePageBuilder = Widget Function(
@@ -242,7 +242,7 @@ class ChewieState extends State<Chewie> {
 /// changes, such as entering and exiting full screen mode. To listen for
 /// changes to the playback, such as a change to the seek position of the
 /// player, please use the standard information provided by the
-/// `VideoPlayerController`.
+/// `CachedVideoPlayerController`.
 class ChewieController extends ChangeNotifier {
   ChewieController({
     required this.videoPlayerController,
@@ -289,7 +289,7 @@ class ChewieController extends ChangeNotifier {
   }
 
   ChewieController copyWith({
-    VideoPlayerController? videoPlayerController,
+    CachedVideoPlayerController? videoPlayerController,
     OptionsTranslation? optionsTranslation,
     double? aspectRatio,
     bool? autoInitialize,
@@ -415,7 +415,7 @@ class ChewieController extends ChangeNotifier {
   Subtitles? subtitle;
 
   /// The controller for the video you want to play
-  final VideoPlayerController videoPlayerController;
+  final CachedVideoPlayerController videoPlayerController;
 
   /// Initialize the Video on Startup. This will prep the video for playback.
   final bool autoInitialize;

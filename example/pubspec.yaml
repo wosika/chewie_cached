@@ -1,4 +1,4 @@
-name: chewie_example
+name: cached_chewie_example
 description: An example of how to use the chewie for Flutter
 version: 1.0.0
 publish_to: none
@@ -7,7 +7,7 @@ environment:
   sdk: '>=2.12.0-0 <3.0.0'
 
 dependencies:
-  chewie:
+  cached_chewie:
     path: ../
   flutter:
     sdk: flutter

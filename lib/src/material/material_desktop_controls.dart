@@ -1,19 +1,19 @@
 import 'dart:async';
 
-import 'package:chewie/src/animated_play_pause.dart';
-import 'package:chewie/src/center_play_button.dart';
-import 'package:chewie/src/chewie_player.dart';
-import 'package:chewie/src/chewie_progress_colors.dart';
-import 'package:chewie/src/helpers/utils.dart';
-import 'package:chewie/src/material/material_progress_bar.dart';
-import 'package:chewie/src/material/widgets/options_dialog.dart';
-import 'package:chewie/src/material/widgets/playback_speed_dialog.dart';
-import 'package:chewie/src/models/option_item.dart';
-import 'package:chewie/src/models/subtitle_model.dart';
-import 'package:chewie/src/notifiers/index.dart';
+import 'package:cached_chewie/src/animated_play_pause.dart';
+import 'package:cached_chewie/src/center_play_button.dart';
+import 'package:cached_chewie/src/chewie_player.dart';
+import 'package:cached_chewie/src/chewie_progress_colors.dart';
+import 'package:cached_chewie/src/helpers/utils.dart';
+import 'package:cached_chewie/src/material/material_progress_bar.dart';
+import 'package:cached_chewie/src/material/widgets/options_dialog.dart';
+import 'package:cached_chewie/src/material/widgets/playback_speed_dialog.dart';
+import 'package:cached_chewie/src/models/option_item.dart';
+import 'package:cached_chewie/src/models/subtitle_model.dart';
+import 'package:cached_chewie/src/notifiers/index.dart';
+import 'package:cached_video_player/cached_video_player.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:video_player/video_player.dart';
 
 class MaterialDesktopControls extends StatefulWidget {
   const MaterialDesktopControls({
@@ -32,7 +32,7 @@ class MaterialDesktopControls extends StatefulWidget {
 class _MaterialDesktopControlsState extends State<MaterialDesktopControls>
     with SingleTickerProviderStateMixin {
   late PlayerNotifier notifier;
-  late VideoPlayerValue _latestValue;
+  late CachedVideoPlayerValue _latestValue;
   double? _latestVolume;
   Timer? _hideTimer;
   Timer? _initTimer;
@@ -45,7 +45,7 @@ class _MaterialDesktopControlsState extends State<MaterialDesktopControls>
   final barHeight = 48.0 * 1.5;
   final marginSize = 5.0;
 
-  late VideoPlayerController controller;
+  late CachedVideoPlayerController controller;
   ChewieController? _chewieController;
 
   // We know that _chewieController is set in didChangeDependencies
@@ -381,7 +381,7 @@ class _MaterialDesktopControlsState extends State<MaterialDesktopControls>
   }
 
   GestureDetector _buildMuteButton(
-    VideoPlayerController controller,
+    CachedVideoPlayerController controller,
   ) {
     return GestureDetector(
       onTap: () {
@@ -413,7 +413,7 @@ class _MaterialDesktopControlsState extends State<MaterialDesktopControls>
     );
   }
 
-  GestureDetector _buildPlayPause(VideoPlayerController controller) {
+  GestureDetector _buildPlayPause(CachedVideoPlayerController controller) {
     return GestureDetector(
       onTap: _playPause,
       child: Container(
