@@ -12,7 +12,11 @@ dependencies:
   flutter:
     sdk: flutter
   provider: ^6.0.5
-  video_player: ^2.7.0
+  video_player:
+    git:
+      url: https://github.com/TimHoogstrate/package_video_player_cache.git
+      path: packages/video_player/video_player
+      ref: feature/add_video_caching_feature_good_and_clean
   wakelock_plus: ^1.1.0
 
 dev_dependencies:
