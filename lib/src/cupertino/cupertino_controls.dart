@@ -12,9 +12,10 @@ import 'package:cached_chewie/src/helpers/utils.dart';
 import 'package:cached_chewie/src/models/option_item.dart';
 import 'package:cached_chewie/src/models/subtitle_model.dart';
 import 'package:cached_chewie/src/notifiers/index.dart';
-import 'package:cached_video_player/cached_video_player.dart';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_cached_video_player/cached_video_player.dart';
 import 'package:provider/provider.dart';
 
 class CupertinoControls extends StatefulWidget {
@@ -47,6 +48,8 @@ class _CupertinoControlsState extends State<CupertinoControls>
   bool _dragging = false;
   Duration? _subtitlesPosition;
   bool _subtitleOn = false;
+  Timer? _bufferingDisplayTimer;
+  bool _displayBufferingIndicator = false;
 
   late CachedVideoPlayerController controller;
 
@@ -91,7 +94,7 @@ class _CupertinoControlsState extends State<CupertinoControls>
           absorbing: notifier.hideStuff,
           child: Stack(
             children: [
-              if (_latestValue.isBuffering)
+              if (_displayBufferingIndicator)
                 const Center(
                   child: CircularProgressIndicator(),
                 )
@@ -140,11 +143,11 @@ class _CupertinoControlsState extends State<CupertinoControls>
 
   @override
   void didChangeDependencies() {
-    final _oldController = _chewieController;
+    final oldController = _chewieController;
     _chewieController = ChewieController.of(context);
     controller = chewieController.videoPlayerController;
 
-    if (_oldController != chewieController) {
+    if (oldController != chewieController) {
       _dispose();
       _initialize();
     }
@@ -201,14 +204,14 @@ class _CupertinoControlsState extends State<CupertinoControls>
 
   Widget _buildSubtitles(Subtitles subtitles) {
     if (!_subtitleOn) {
-      return Container();
+      return const SizedBox();
     }
     if (_subtitlesPosition == null) {
-      return Container();
+      return const SizedBox();
     }
     final currentSubtitle = subtitles.getByPosition(_subtitlesPosition!);
     if (currentSubtitle.isEmpty) {
-      return Container();
+      return const SizedBox();
     }
 
     if (chewieController.subtitleBuilder != null) {
@@ -244,6 +247,7 @@ class _CupertinoControlsState extends State<CupertinoControls>
   ) {
     return SafeArea(
       bottom: chewieController.isFullScreen,
+      minimum: chewieController.controlsSafeAreaMinimum,
       child: AnimatedOpacity(
         opacity: notifier.hideStuff ? 0.0 : 1.0,
         duration: const Duration(milliseconds: 300),
@@ -393,7 +397,7 @@ class _CupertinoControlsState extends State<CupertinoControls>
           borderRadius: BorderRadius.circular(10.0),
           child: BackdropFilter(
             filter: ui.ImageFilter.blur(sigmaX: 10.0),
-            child: Container(
+            child: ColoredBox(
               color: backgroundColor,
               child: Container(
                 height: barHeight,
@@ -466,7 +470,7 @@ class _CupertinoControlsState extends State<CupertinoControls>
   Widget _buildSubtitleToggle(Color iconColor, double barHeight) {
     //if don't have subtitle hiden button
     if (chewieController.subtitle?.isEmpty ?? true) {
-      return Container();
+      return const SizedBox();
     }
     return GestureDetector(
       onTap: _subtitleToggle,
@@ -678,6 +682,9 @@ class _CupertinoControlsState extends State<CupertinoControls>
 
             _hideTimer?.cancel();
           },
+          onDragUpdate: () {
+            _hideTimer?.cancel();
+          },
           onDragEnd: () {
             setState(() {
               _dragging = false;
@@ -769,8 +776,32 @@ class _CupertinoControlsState extends State<CupertinoControls>
     });
   }
 
+  void _bufferingTimerTimeout() {
+    _displayBufferingIndicator = true;
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
   void _updateState() {
     if (!mounted) return;
+
+    // display the progress bar indicator only after the buffering delay if it has been set
+    if (chewieController.progressIndicatorDelay != null) {
+      if (controller.value.isBuffering) {
+        _bufferingDisplayTimer ??= Timer(
+          chewieController.progressIndicatorDelay!,
+          _bufferingTimerTimeout,
+        );
+      } else {
+        _bufferingDisplayTimer?.cancel();
+        _bufferingDisplayTimer = null;
+        _displayBufferingIndicator = false;
+      }
+    } else {
+      _displayBufferingIndicator = controller.value.isBuffering;
+    }
+
     setState(() {
       _latestValue = controller.value;
       _subtitlesPosition = controller.value.position;

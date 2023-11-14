@@ -6,11 +6,13 @@ import 'package:cached_chewie/src/models/options_translation.dart';
 import 'package:cached_chewie/src/models/subtitle_model.dart';
 import 'package:cached_chewie/src/notifiers/player_notifier.dart';
 import 'package:cached_chewie/src/player_with_controls.dart';
-import 'package:cached_video_player/cached_video_player.dart';
+import 'package:flutter_cached_video_player/cached_video_player.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import 'package:wakelock/wakelock.dart';
+
+import 'package:wakelock_plus/wakelock_plus.dart';
+
 
 typedef ChewieRoutePageBuilder = Widget Function(
   BuildContext context,
@@ -158,7 +160,7 @@ class ChewieState extends State<Chewie> {
     onEnterFullScreen();
 
     if (!widget.controller.allowedScreenSleep) {
-      Wakelock.enable();
+      WakelockPlus.enable();
     }
 
     await Navigator.of(
@@ -168,9 +170,9 @@ class ChewieState extends State<Chewie> {
     _isFullScreen = false;
     widget.controller.exitFullScreen();
 
-    // The wakelock plugins checks whether it needs to perform an action internally,
-    // so we do not need to check Wakelock.isEnabled.
-    Wakelock.disable();
+    if (!widget.controller.allowedScreenSleep) {
+      WakelockPlus.disable();
+    }
 
     SystemChrome.setEnabledSystemUIMode(
       SystemUiMode.manual,
@@ -250,6 +252,7 @@ class ChewieController extends ChangeNotifier {
     this.aspectRatio,
     this.autoInitialize = false,
     this.autoPlay = false,
+    this.draggableProgressBar = true,
     this.startAt,
     this.looping = false,
     this.fullScreenByDefault = false,
@@ -262,6 +265,7 @@ class ChewieController extends ChangeNotifier {
     this.optionsBuilder,
     this.additionalOptions,
     this.showControls = true,
+    this.transformationController,
     this.zoomAndPan = false,
     this.maxScale = 2.5,
     this.subtitle,
@@ -280,7 +284,9 @@ class ChewieController extends ChangeNotifier {
     this.systemOverlaysAfterFullScreen = SystemUiOverlay.values,
     this.deviceOrientationsAfterFullScreen = DeviceOrientation.values,
     this.routePageBuilder,
+    this.progressIndicatorDelay,
     this.hideControlsTimer = defaultHideControlsTimer,
+    this.controlsSafeAreaMinimum = EdgeInsets.zero,
   }) : assert(
           playbackSpeeds.every((speed) => speed > 0),
           'The playbackSpeeds values must all be greater than 0',
@@ -294,6 +300,7 @@ class ChewieController extends ChangeNotifier {
     double? aspectRatio,
     bool? autoInitialize,
     bool? autoPlay,
+    bool? draggableProgressBar,
     Duration? startAt,
     bool? looping,
     bool? fullScreenByDefault,
@@ -306,6 +313,7 @@ class ChewieController extends ChangeNotifier {
     Future<void> Function(BuildContext, List<OptionItem>)? optionsBuilder,
     List<OptionItem> Function(BuildContext)? additionalOptions,
     bool? showControls,
+    TransformationController? transformationController,
     bool? zoomAndPan,
     double? maxScale,
     Subtitles? subtitle,
@@ -319,20 +327,22 @@ class ChewieController extends ChangeNotifier {
     bool? allowPlaybackSpeedChanging,
     bool? useRootNavigator,
     Duration? hideControlsTimer,
+    EdgeInsets? controlsSafeAreaMinimum,
     List<double>? playbackSpeeds,
     List<SystemUiOverlay>? systemOverlaysOnEnterFullScreen,
     List<DeviceOrientation>? deviceOrientationsOnEnterFullScreen,
     List<SystemUiOverlay>? systemOverlaysAfterFullScreen,
     List<DeviceOrientation>? deviceOrientationsAfterFullScreen,
+    Duration? progressIndicatorDelay,
     Widget Function(
       BuildContext,
       Animation<double>,
       Animation<double>,
       ChewieControllerProvider,
-    )?
-        routePageBuilder,
+    )? routePageBuilder,
   }) {
     return ChewieController(
+      draggableProgressBar: draggableProgressBar ?? this.draggableProgressBar,
       videoPlayerController:
           videoPlayerController ?? this.videoPlayerController,
       optionsTranslation: optionsTranslation ?? this.optionsTranslation,
@@ -377,6 +387,8 @@ class ChewieController extends ChangeNotifier {
           this.deviceOrientationsAfterFullScreen,
       routePageBuilder: routePageBuilder ?? this.routePageBuilder,
       hideControlsTimer: hideControlsTimer ?? this.hideControlsTimer,
+      progressIndicatorDelay:
+          progressIndicatorDelay ?? this.progressIndicatorDelay,
     );
   }
 
@@ -423,17 +435,23 @@ class ChewieController extends ChangeNotifier {
   /// Play the video as soon as it's displayed
   final bool autoPlay;
 
+  /// Non-Draggable Progress Bar
+  final bool draggableProgressBar;
+
   /// Start video at a certain position
   final Duration? startAt;
 
   /// Whether or not the video should loop
   final bool looping;
 
-  /// Weather or not to show the controls when initializing the widget.
+  /// Wether or not to show the controls when initializing the widget.
   final bool showControlsOnInitialize;
 
   /// Whether or not to show the controls at all
   final bool showControls;
+
+  /// Controller to pass into the [InteractiveViewer] component
+  final TransformationController? transformationController;
 
   /// Whether or not to allow zooming and panning
   final bool zoomAndPan;
@@ -477,7 +495,7 @@ class ChewieController extends ChangeNotifier {
   /// Defines if the player will sleep in fullscreen or not
   final bool allowedScreenSleep;
 
-  /// Defines if the controls should be for live stream video
+  /// Defines if the controls should be shown for live stream video
   final bool isLive;
 
   /// Defines if the fullscreen control should be shown
@@ -513,6 +531,13 @@ class ChewieController extends ChangeNotifier {
   /// Defines a custom RoutePageBuilder for the fullscreen
   final ChewieRoutePageBuilder? routePageBuilder;
 
+  /// Defines a delay in milliseconds between entering buffering state and displaying the loading spinner. Set null (default) to disable it.
+  final Duration? progressIndicatorDelay;
+
+  /// Adds additional padding to the controls' [SafeArea] as desired.
+  /// Defaults to [EdgeInsets.zero].
+  final EdgeInsets controlsSafeAreaMinimum;
+
   static ChewieController of(BuildContext context) {
     final chewieControllerProvider =
         context.dependOnInheritedWidgetOfExactType<ChewieControllerProvider>()!;
@@ -526,7 +551,7 @@ class ChewieController extends ChangeNotifier {
 
   bool get isPlaying => videoPlayerController.value.isPlaying;
 
-  Future _initialize() async {
+  Future<dynamic> _initialize() async {
     await videoPlayerController.setLooping(looping);
 
     if ((autoInitialize || autoPlay) &&
@@ -613,6 +638,6 @@ class ChewieControllerProvider extends InheritedWidget {
   final ChewieController controller;
 
   @override
-  bool updateShouldNotify(ChewieControllerProvider old) =>
-      controller != old.controller;
+  bool updateShouldNotify(ChewieControllerProvider oldWidget) =>
+      controller != oldWidget.controller;
 }
