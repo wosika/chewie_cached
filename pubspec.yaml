@@ -13,8 +13,11 @@ dependencies:
   flutter:
     sdk: flutter
 
-  flutter_cached_video_player: ^2.0.5
-  provider: ^6.0.1
+  flutter_cached_video_player:
+    git:
+      url: https://gitee.com/wosikakale/flutter_cached_video_player.git
+      ref: master
+  provider: ^6.0.5
   wakelock_plus: ^1.1.0
 
 
